@@ -42,4 +42,3 @@ The `complete` command was the most challenging to transition to UI because in t
 
 ### 2. What did you change in your Lab 12 logic once it had a screen, and why?
 In the CLI logic, output was printed to stdout sequentially using `print()`. When transitioning to a graphical interface, text output was replaced with persistent reactive state rendering. Commands were refactored from `if/else if` string parsers into direct event handlers attached to widgets (`onPressed`, `onChanged`, `onTap`), and feedback messages were converted from terminal logs into `SnackBar` popups.
-# stay_ahead
