@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "180689536000",
+    "project_id": "stayahead-2bae9",
+    "storage_bucket": "stayahead-2bae9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:180689536000:android:f0da013175abafaa8244e5",
+        "android_client_info": {
+          "package_name": "com.example.stay_ahead"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2zF09gOCyhX6_jgd0xNl_1jJ5hg9i-PM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

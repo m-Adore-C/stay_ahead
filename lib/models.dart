@@ -1,5 +1,5 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // --- TASK STATUS ENUM ---
 enum TaskStatus { toDo, inProgress, done }
@@ -42,8 +42,8 @@ class CourseTask {
 
   factory CourseTask.fromJson(Map<String, dynamic> json) {
     return CourseTask(
-      id: json['id'] as String,
-      title: json['title'] as String,
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
       dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate']) : null,
       status: TaskStatus.values[json['status'] ?? 0],
     );
@@ -79,10 +79,10 @@ class StoredDocument {
 
   factory StoredDocument.fromJson(Map<String, dynamic> json) {
     return StoredDocument(
-      id: json['id'] as String,
-      fileName: json['fileName'] as String,
-      filePath: json['filePath'] as String,
-      fileSizeInBytes: (json['fileSizeInBytes'] as num).toInt(),
+      id: json['id'] as String? ?? '',
+      fileName: json['fileName'] as String? ?? '',
+      filePath: json['filePath'] as String? ?? '',
+      fileSizeInBytes: (json['fileSizeInBytes'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -100,54 +100,53 @@ class CourseModule {
   String title;
   List<CourseTask> tasks;
   List<StoredDocument> documents;
+  DateTime? createdAt;
 
   CourseModule({
     required this.id,
     required this.title,
     required this.tasks,
     required this.documents,
+    this.createdAt,
   });
 
-  factory CourseModule.fromJson(Map<String, dynamic> json) {
-    var taskList = json['tasks'] as List? ?? [];
-    var docList = json['documents'] as List? ?? [];
-    return CourseModule(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      tasks: taskList.map((t) => CourseTask.fromJson(t)).toList(),
-      documents: docList.map((d) => StoredDocument.fromJson(d)).toList(),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
+  Map<String, dynamic> toMap() => {
     'title': title,
     'tasks': tasks.map((t) => t.toJson()).toList(),
     'documents': documents.map((d) => d.toJson()).toList(),
   };
+
+  factory CourseModule.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  final data = doc.data() ?? {};
+  var taskList = data['tasks'] as List? ?? [];
+  var docList = data['documents'] as List? ?? [];
+
+  return CourseModule(
+  id: doc.id,
+  title: data['title'] as String? ?? 'Untitled Course',
+  tasks: taskList.map((t) => CourseTask.fromJson(Map<String, dynamic>.from(t))).toList(),
+  documents: docList.map((d) => StoredDocument.fromJson(Map<String, dynamic>.from(d))).toList(),
+  createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+  );
+  }
 }
 
-// --- LOCAL STORAGE SERVICE ---
-class LocalStorageService {
-  static const String _storageKey = 'stayahead_workspace_v1';
-
-  // Starts with 0 courses by default so the user builds from scratch
-  static final List<CourseModule> defaultModules = [];
-
-  Future<List<CourseModule>> loadCourses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_storageKey);
-    if (data == null) {
-      await saveCourses(defaultModules);
-      return defaultModules;
-    }
-    final List decoded = jsonDecode(data);
-    return decoded.map((item) => CourseModule.fromJson(item)).toList();
+// Collection reference for current logged-in user's courses
+CollectionReference<Map<String, dynamic>> userCoursesRef() {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    throw Exception('No authenticated user found');
   }
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('courses');
+}
 
-  Future<void> saveCourses(List<CourseModule> modules) async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(modules.map((m) => m.toJson()).toList());
-    await prefs.setString(_storageKey, encoded);
-  }
+// Step 4: Live Stream of courses sorted by creation date
+Stream<List<CourseModule>> userCoursesStream() {
+  return userCoursesRef()
+      .orderBy('createdAt', descending: false)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) => CourseModule.fromDoc(doc)).toList());
 }
